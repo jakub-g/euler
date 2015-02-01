@@ -1,11 +1,21 @@
-#!./node.sh
+#!/bin/sh nodeharmony.sh
 'use strict';
+
+// Make chainable generator out of a normal Generator
+let Gen = function (generator) {
+    // make it possible to use "Gen(gen)" instead of "new Gen(gen)"
+    if (!(this instanceof Gen)) {
+        return new Gen(generator);
+    }
+    this.generator = generator;
+}
 
 /**
 * @param Generator gen
 * @return Generator
 */
-let GeneratorFilter = function (gen, filterCb) {
+Gen.prototype.filter = function (filterCb) {
+  let gen = this.generator;
   let genf = function* () {
     for (let val of gen) {
       if (filterCb(val)) {
@@ -13,7 +23,7 @@ let GeneratorFilter = function (gen, filterCb) {
       }
     }
   }
-  return genf();
+  return Gen(genf());
 }
 
 /**
@@ -22,7 +32,8 @@ let GeneratorFilter = function (gen, filterCb) {
 * @param MultiType initialValue
 * @return MultiType
 **/
-let GeneratorReduce = function (gen, reduceCb, initialValue) {
+Gen.prototype.reduce = function (reduceCb, initialValue) {
+    let gen = this.generator;
     const iteratorSymbol = (typeof Symbol === "function" && Symbol.iterator) || "@@iterator";
     if (!gen[iteratorSymbol]) {
         throw new Error("first argument must be a generator");
@@ -35,6 +46,7 @@ let GeneratorReduce = function (gen, reduceCb, initialValue) {
     return acc;
 }
 
+
 /**
 * @param Generator gen
 * @return GeneratorFunction
@@ -45,10 +57,10 @@ let range = function *(a, b) {
 }
 
 let main = function () {
-    let gen0to999 = range(0, 999);
-    let gen0to999multiple3or5 = GeneratorFilter(gen0to999, x => (x % 3 == 0 || x % 5 == 0));
-    let sum = GeneratorReduce(gen0to999multiple3or5, (x, y) => (x + y));
+    let sum = Gen(range(0, 999))
+        .filter(x => (x % 3 == 0 || x % 5 == 0))
+        .reduce((x, y) => (x + y));
     return sum // 233168
 }
 
-console.log(main()) // tested in Firefox 34
+console.log(main()) // tested in Firefox 34 and iojs 1.0.4 harmony

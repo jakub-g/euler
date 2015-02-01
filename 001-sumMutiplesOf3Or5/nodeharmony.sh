@@ -1,2 +1,2 @@
 #!/bin/sh
-exec node --harmony_arrow_functions "$@"
+exec iojs --harmony_arrow_functions "$@"

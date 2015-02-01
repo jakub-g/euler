@@ -1,38 +1,47 @@
 #!/bin/sh nodeharmony.sh
 'use strict';
 
-// Make chainable generator out of a normal Generator
-let Gen = function (generator) {
-    // make it possible to use "Gen(gen)" instead of "new Gen(gen)"
-    if (!(this instanceof Gen)) {
-        return new Gen(generator);
-    }
-    this.generator = generator;
+let arg2 = process.argv[2];
+if(arg2 == "--quiet" || arg2 == "-q") {
+    console.info = function () {}
 }
 
 /**
+* A constructor function that wraps a Generator to make it chainable
 * @param Generator gen
-* @return Generator
+* @return CGen chainable generator
 */
-Gen.prototype.filter = function (filterCb) {
+let CGen = function (gen) {
+    // make it possible to use "CGen(gen)" instead of "new CGen(gen)"
+    if (!(this instanceof CGen)) {
+        return new CGen(gen);
+    }
+    this.generator = gen;
+}
+
+/**
+* @param Function filterCb
+* @return CGen
+*/
+CGen.prototype.filter = function (filterCb) {
   let gen = this.generator;
   let genf = function* () {
     for (let val of gen) {
       if (filterCb(val)) {
+        console.info('[filter] yielding ' + val);
         yield val;
       }
     }
   }
-  return Gen(genf());
+  return CGen(genf());
 }
 
 /**
-* @param Generator gen
 * @param Function reduceCb
 * @param MultiType initialValue
 * @return MultiType
 **/
-Gen.prototype.reduce = function (reduceCb, initialValue) {
+CGen.prototype.reduce = function (reduceCb, initialValue) {
     let gen = this.generator;
     const iteratorSymbol = (typeof Symbol === "function" && Symbol.iterator) || "@@iterator";
     if (!gen[iteratorSymbol]) {
@@ -42,22 +51,29 @@ Gen.prototype.reduce = function (reduceCb, initialValue) {
     let acc = initialValue || 0;
     for (let val of gen) {
         acc = reduceCb (acc, val);
+        console.info('[reduce] acc = ' + acc);
     }
+    console.info('[reduce] returning ' + acc);
     return acc;
 }
 
 
 /**
-* @param Generator gen
-* @return GeneratorFunction
+* @type GeneratorFunction (function*)
+* @param Integer a
+* @param Integer b
+* @yields Integer+
 */
 let range = function *(a, b) {
   let i = a;
-  while (i <= b) yield i++;
+  while (i <= b){
+    console.info('[range]  yielding ' + i);
+    yield i++;
+  }
 }
 
 let main = function () {
-    let sum = Gen(range(0, 999))
+    let sum = CGen(range(0, 999))
         .filter(x => (x % 3 == 0 || x % 5 == 0))
         .reduce((x, y) => (x + y));
     return sum // 233168

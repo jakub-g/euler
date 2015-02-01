@@ -7,8 +7,8 @@ if(arg2 == "--quiet" || arg2 == "-q") {
 }
 
 /**
-* A constructor function that wraps a Generator to make it chainable
-* @param Generator gen
+* A constructor function that wraps a Generator to make it chainable.
+* @param Generator|Function* gen
 * @return CGen chainable generator
 */
 let CGen = function (gen) {
@@ -16,18 +16,24 @@ let CGen = function (gen) {
     if (!(this instanceof CGen)) {
         return new CGen(gen);
     }
+    // we may get a GeneratorFunction (function*) instead of a Generator as a param
+    if (typeof gen == 'function') {
+        gen = gen();
+    }
     this.generator = gen;
 }
 
 /**
-* @param Function filterCb
+* @param Function filterCb Function(element, index)
 * @return CGen
 */
 CGen.prototype.filter = function (filterCb) {
   let gen = this.generator;
   let genf = function* () {
+    let idx = 0;
     for (let val of gen) {
-      if (filterCb(val)) {
+      ++idx
+      if (filterCb(val, idx)) {
         console.info('[filter] yielding ' + val);
         yield val;
       }
@@ -72,11 +78,31 @@ let range = function *(a, b) {
   }
 }
 
+let fibonacci = function* () {
+    let MAX = 4000000;
+    let a = 1, b = 2, c;
+    console.info('[fibo]   yielding ' + a);
+    yield a
+    console.info('[fibo]   yielding ' + b);
+    yield b
+    
+    for (;;) {
+      c = a + b
+      if ( c > MAX) {
+        return
+      }
+      console.info('[fibo]   yielding ' + c);
+      yield c
+      a = b
+      b = c
+    }
+}
+
 let main = function () {
-    let sum = CGen(range(0, 999))
-        .filter(x => (x % 3 == 0 || x % 5 == 0))
+    let sum = CGen(fibonacci)
+        .filter((x, idx) => (x % 2 == 0))
         .reduce((x, y) => (x + y));
-    return sum // 2....8
+    return sum // 4.....2
 }
 
 console.log(main()) // tested in Firefox 34 and iojs 1.0.4 harmony
